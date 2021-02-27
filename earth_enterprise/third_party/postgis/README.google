@@ -1,0 +1,10 @@
+URL: http://postgis.refractions.net
+Version: 2.3.4
+License: GNU v2
+License File: COPYING
+
+Description:
+PostGIS - Geographic Information Systems Extension to PostgreSQL
+
+Local Modifications:
+None
