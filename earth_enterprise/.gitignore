@@ -1,0 +1,13 @@
+# QT Creator project files
+/*.config
+/*.creator
+/*.creator.user
+/*.files
+/*.includes
+
+# vs code files
+/*.vscode
+
+# compiled python
+/**/*.pyc
+
