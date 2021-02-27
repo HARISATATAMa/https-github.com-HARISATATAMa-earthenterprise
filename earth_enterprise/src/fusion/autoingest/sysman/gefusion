@@ -1,0 +1,171 @@
+#!/bin/bash
+#
+# Copyright 2017 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# chkconfig: 35 71 34
+# description: Keyhole system manager for fusion processing tools.
+
+### BEGIN INIT INFO
+# Provides:          gefusion
+# Required-Start: nscd
+# Should-Start:
+# Required-Stop:
+# Default-Start:     3 5
+# Default-Stop:
+# Description:       Start Keyhole System Daemons
+### END INIT INFO
+
+if [ "$EUID" != "0" ] ; then
+    echo `basename $0` "must be run as root"
+    exit 1;
+fi
+
+# Fix the hostname to equal hostname -f
+hostname_f=`hostname -f`
+`hostname $hostname_f`
+
+# set up the path for the daemons
+if [ -n "$KEYHOLE_DAEMON_PATH" ] ; then
+    export PATH=$KEYHOLE_DAEMON_PATH
+else
+    export PATH=/opt/google/bin:/usr/bin:/bin
+fi
+
+
+function check_configuration {
+    if ! gefdaemoncheck --checkassetroot ; then
+	# gefdaemoncheck generates its own output
+	exit 1
+    fi
+}
+
+
+function check_if_master {
+    gefdaemoncheck --checksysman
+}
+
+function stop_daemon {
+  echo -n "Shutting down $2... "
+  pidfile="/var/opt/google/run/$1.pid"
+  if [ -e "$pidfile" ] ; then
+    if gestopdaemon $1 ; then
+      echo "Done"
+    else
+      echo "Failed"
+    fi
+  else
+    echo "Not running"
+  fi
+}
+
+function check_daemon {
+  # more DRY to use "gefdaemoncheck --checkrunning"
+  #   but it seems to assume --checksysman is true
+  #   thus wont work on non-master hosts.
+  daemon_path=$(which "$1")
+  pidfile="/var/opt/google/run/$1.pid"
+  if [ -s "$pidfile" ] ; then
+    pid=`cat "$pidfile"`
+    if [ -d "/proc/$pid" ] && [ "$(readlink "/proc/$pid/exe")" = "$daemon_path" ]; then
+      echo "$1:  Running (PID $pid)."
+      return 0
+    fi
+  fi
+  echo "$1:  Not running."
+  return 1
+}
+
+start() {
+  # check to make sure the system has been configured
+  check_configuration
+
+  if [ "$2" == "allowcore" ] ; then
+    echo "Enabling core files"
+    ulimit -c unlimited
+  fi
+
+  if check_if_master ; then
+    echo -n "Starting System Manager... "
+    if ! gestartdaemon gesystemmanager ; then
+      exit 1
+    fi
+    echo "Done"
+  fi
+
+  echo -n "Starting Resource Provider... "
+  if ! gestartdaemon geresourceprovider ; then
+    if check_if_master ; then
+      stop_daemon gesystemmanager "System Manager"
+    fi
+    exit 1
+  fi
+  echo "Done"
+}
+
+stop() {
+  stop_daemon geresourceprovider "Resource Provider"
+  if check_if_master ; then
+    stop_daemon gesystemmanager "System Manager"
+  fi
+}
+
+status() {
+  return_code=0
+  if check_if_master ; then
+    check_daemon gesystemmanager || return_code=1
+  fi
+  check_daemon geresourceprovider || return_code=1
+  return "$return_code"
+}
+
+reload() {
+  pidfile="/var/opt/google/run/gesystemmanager.pid"
+  systemrc="/etc/opt/google/systemrc"
+  pid=`cat $pidfile`
+  echo "reloading $systemrc"
+  kill -1 $pid
+}
+
+case "$1" in
+    reload)
+      reload
+      ;;
+    restart)
+      stop
+      sleep 1
+      start
+      ;;
+    start)
+      start
+      ;;
+    stop)
+      stop
+      ;;
+    status)
+      status
+      exit $?
+      ;;
+    *)
+      echo "usage: $0 {start|stop|reload|restart|status}"
+      exit 1
+      ;;
+esac
+
+exit 0
+
+
+
+
