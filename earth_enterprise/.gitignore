@@ -1,0 +1,11 @@
+# QT Creator project files
+/*.config
+/*.creator
+/*.creator.user
+/*.files
+/*.includes
+/*.cflags
+/*.cxxflags
+
+# compiled python
+/**/*.pyc
