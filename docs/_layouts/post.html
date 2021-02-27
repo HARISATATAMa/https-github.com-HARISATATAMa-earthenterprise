@@ -1,0 +1,55 @@
+---
+layout: blog
+section_id: blog
+---
+
+{{page.categories}}
+
+
+<div class='post'>
+  <div class='timestamp left text-center'>
+    <span class='month'>{{ page.date | date: "%h" }}</span>
+    <span class='date'>{{ page.date | date: "%d" }}</span>
+    <!--  Reuse the month formatting to add the year to the post-->
+    <span class='month'>{{ page.date | date: "%Y" }}</span>
+  </div>
+  <div class='info'>
+    <h3 class='regularText'>
+      {{ page.title }}
+    </h3>
+    {% if page.thumbnail %}
+      <img src="{{ site.baseurl}}/images/{{page.thumbnail}}" height="75" width="75">
+    {% endif %}
+
+    <p>
+      By
+      <span class='author'>{{ page.author }}</span>
+    </p>
+  </div>
+  <div class='content'>
+    {{ content }}
+  </div>
+</div>
+
+<!--  Disable Comments...for now -->
+<!-- <div id='comments-form'>
+  <h3>Your comment</h3>
+  <form accept-charset='UTF-8' action='' method='post'>
+    <p class='name'>
+      <label for='name'>Your Name</label>
+      <input class='input-text required' id='name' name='name' type='text'>
+    </p>
+    <p class='email'>
+      <label for='email'>Your Email</label>
+      <input class='input-text required' id='email' name='email' type='text'>
+    </p>
+    <p class='message'>
+      <label for='message'>Your Message</label>
+      <textarea class='required' cols='80' id='message' name='message' rows='5'></textarea>
+    </p>
+    <div class='spacing'></div>
+    <p>
+      <input class='button' type='submit' value='Send Message'>
+    </p>
+  </form>
+</div> -->
