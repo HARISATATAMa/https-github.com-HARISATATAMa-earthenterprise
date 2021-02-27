@@ -1,0 +1,158 @@
+#!/bin/bash
+#
+# Copyright 2017 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Startup script for Google Earth Server.
+# chkconfig: 35 70 32
+# description: Open Google Earth Server services
+# would run after ncsd, start before gefusion...
+
+### BEGIN INIT INFO
+# Provides:       geserver
+# Required-Start:
+# Should-Start:   nscd
+# Required-Stop:
+# Default-Start:  2 3 4 5
+# Default-Stop:   0 1 6
+# Description:    Open Google Earth Server services
+### END INIT INFO
+
+if [ "$EUID" != "0" ] ; then
+  echo `basename $0` "must be run as root"
+  exit 1;
+fi
+
+# Fix the hostname to equal hostname -f
+hostname_f=`hostname -f`
+`hostname $hostname_f`
+
+# Installer will overwrite the IA_* macros (e.g., IA_GEAPACHE_USER)
+# with the user-specified values.
+# As of 3.1, GEE Fusion and GEE Server supports custom usernames which are
+# specified at install time.
+#"geapacheuser"
+GEAPACHEUSER="IA_GEAPACHE_USER"
+#"gepguser"
+GEPGUSER="IA_GEPGUSER"
+
+prog=geserver
+gehttpd_root=/opt/google/gehttpd/bin
+gebin_root=/opt/google/bin
+pidfile_gehttpd='/opt/google/gehttpd/logs/httpd.pid'
+pidfile_postmaster='/var/opt/google/pgsql/data/postmaster.pid'
+dashes='--------------------------------------------------------------------'
+
+# Variable where result of start/stop are stored for later return by
+# this script
+RETVAL=0
+
+use_su=`su "$GEPGUSER" -c "echo -n 1" 2>/dev/null || echo -n 0`
+
+run_as_user() {
+  if [ $use_su -eq 1 ] ; then
+    ( cd / ;su $1 -c "$2" )
+  else
+    ( cd / ;sudo -u $1 bash -c "$2" )
+  fi
+}
+
+start() {
+  echo $dashes
+  run_as_user "$GEPGUSER" "$gebin_root/pg_ctl -D /var/opt/google/pgsql/data -l /var/opt/google/pgsql/logs/pg.log start -w";
+  echo
+  echo $dashes
+  $gehttpd_root/gehttpd_init start
+  echo
+  echo $dashes
+  echo 'Done Starting Google Earth Enterprise Server'
+  echo
+}
+
+stop() {
+  echo $"Stopping $prog: "
+  echo
+  echo $dashes
+  $gehttpd_root/gehttpd_init stop
+  echo
+  echo $dashes
+  # only stop if already running...
+  if [ -f "$pidfile_postmaster" ] ; then
+    run_as_user "$GEPGUSER" "$gebin_root/pg_ctl -D /var/opt/google/pgsql/data -l /var/opt/google/pgsql/logs/pg.log stop";
+    rm -f "$pidfile_postmaster"
+  fi
+  echo $dashes
+  echo 'Done Stopping Google Earth Enterprise Server'
+  echo
+}
+
+status_postmaster() {
+  if [ -s "$pidfile_postmaster" ] ; then
+    pid=`head -1 "$pidfile_postmaster"`
+    # redirect to /dev/null because pg_ctl --silent option doesnt work for status subcommand
+    run_as_user "$GEPGUSER" "$gebin_root/pg_ctl -D /var/opt/google/pgsql/data status" >& /dev/null
+    if [ "$?" -eq 0 ]; then
+      echo "postmaster: Running (PID $pid)."
+      return 0
+    fi
+  fi
+  echo "postmaster: Not running"
+  return 1
+}
+
+status_gehttpd() {
+  daemon_name='gehttpd'
+  daemon_path="$gehttpd_root/gehttpd"
+  if [ -s "$pidfile_gehttpd" ] ; then
+    pid=`cat "$pidfile_gehttpd"`
+    # not using 'gehttpd_init status' because it requires lynx install
+    if [ -d "/proc/$pid" ] && [ "$(readlink "/proc/$pid/exe")" = "$daemon_path" ]; then
+      echo "$daemon_name: Running (PID $pid)."
+      return 0
+    fi
+  fi
+  echo "$daemon_name: Not running"
+  return 1
+}
+
+status() {
+  RETVAL=0
+  status_postmaster || RETVAL=1
+  status_gehttpd || RETVAL=1
+}
+
+# See how we were called.
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  restart)
+    stop
+    sleep 1
+    start
+    ;;
+  status)
+    status
+    ;;
+  *)
+    echo $"Usage: $prog {start|stop|restart|status}"
+    exit 1
+esac
+
+exit $RETVAL
+
