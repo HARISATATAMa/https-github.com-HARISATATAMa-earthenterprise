@@ -1,0 +1,16 @@
+- name: Open GEE
+  path: index.html
+  section_id: home
+  children:
+    - name: Why Open GEE?
+      path: index.html#whyopengee
+    - name: Use Cases
+      path: index.html#usecases
+    - name: Features
+      path: index.html#opengeefeatures
+- name: Documentation
+  path: geedocs
+  secion_id: geedocs
+- name: Blog
+  path: blog.html
+  section_id: blog
