@@ -1,0 +1,25 @@
+earth_enterprise/.sconsign.dblite
+earth_enterprise/tutorial/.sconsign.dblite
+earth_enterprise/src/version.txt
+
+# Tutorial files
+earth_enterprise/tutorial/FusionTutorial-Full.tar.gz
+earth_enterprise/tutorial/FusionTutorial/Imagery
+earth_enterprise/tutorial/FusionTutorial/Vector
+earth_enterprise/tutorial/FusionTutorial/Terrain
+earth_enterprise/tutorial/FusionTutorial/KML
+
+# Eclipse project files
+.cproject
+.project
+.pydevproject
+.settings
+
+# QT Creator project files
+/*.config
+/*.creator
+/*.creator.user
+/*.files
+/*.includes
+
+.vscode/
